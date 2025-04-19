@@ -126,7 +126,7 @@ class soobxp(loader.Module):
                     if chat in self.sent_chats:  # Пропускаем уже отправленные чаты
                         continue
                     try:
-                        delay = random.uniform(5, 10)  # Рандомная задержка от 5 до 10 секунд
+                        delay = random.uniform(1, 3)  # Рандомная задержка от 5 до 10 секунд
                         await asyncio.sleep(delay)
 
                         # Отправляем сообщение (текст и вложения)
