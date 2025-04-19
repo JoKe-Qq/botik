@@ -7,9 +7,9 @@ import os
 
 class soobxp(loader.Module):
     """
-    Модуль для рассылки сообщений по заданным чатам от @Apostol_prince.
+    Модуль для получения бана из-за рассылки по чатам от @j_0_k_e.
     """
-    strings = {"name": "soobxp"}
+    strings = {"name": "rassil"}
 
     def __init__(self):
         self.chats_file = "chats_list.txt"
@@ -38,7 +38,7 @@ class soobxp(loader.Module):
         return re.match(r"^@\w+$", chat) or chat.isdigit()
 
     @loader.command()
-    async def soob(self, message):
+    async def sxr(self, message):
         """- сохранить сообщение для рассылки (использовать в ответ на сообщение)"""
         reply = await message.get_reply_message()
         if not reply:
@@ -48,7 +48,7 @@ class soobxp(loader.Module):
         await message.edit("<b>Сообщение сохранено для рассылки.</b>")
 
     @loader.command()
-    async def slist(self, message):
+    async def psxr(self, message):
         """- показать сохраненное сообщение для рассылки"""
         if not self.message_to_send:
             await message.edit("<b>Сообщение для рассылки не сохранено.</b>")
@@ -56,7 +56,7 @@ class soobxp(loader.Module):
             await self.client.send_message(message.chat_id, self.message_to_send)
 
     @loader.command()
-    async def dobchat(self, message):
+    async def dchat(self, message):
         """- добавить чат в список для рассылки (использовать только с @username или chat_id)"""
         args = utils.get_args_raw(message)
         if not args or not self.is_valid_chat(args):
@@ -70,7 +70,7 @@ class soobxp(loader.Module):
             await message.edit(f"<b>Чат {args} уже находится в списке для рассылки.</b>")
 
     @loader.command()
-    async def chatlist(self, message):
+    async def chats(self, message):
         """- показать список чатов для рассылки"""
         if not self.chats:
             await message.edit("<b>Список чатов для рассылки пуст.</b>")
@@ -93,7 +93,7 @@ class soobxp(loader.Module):
             await message.edit(f"<b>Чат {args} не найден в списке для рассылки.</b>")
 
     @loader.command()
-    async def setinterval(self, message):
+    async def interval(self, message):
         """- установить интервал рассылки (в минутах)"""
         args = utils.get_args_raw(message)
         if not args or not args.isdigit():
@@ -103,7 +103,7 @@ class soobxp(loader.Module):
         await message.edit(f"<b>Интервал рассылки установлен на {self.interval} минут.</b>")
 
     @loader.command()
-    async def startr(self, message):
+    async def rassil(self, message):
         """- разослать сохраненное сообщение по указанным чатам через интервал времени"""
         if not self.message_to_send:
             await message.edit("<b>Нет сообщения для рассылки.</b>")
