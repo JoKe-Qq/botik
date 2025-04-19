@@ -15,7 +15,7 @@ class soobxp(loader.Module):
         self.chats_file = "chats_list.txt"
         self.chats = self.load_chats()
         self.message_to_send = None
-        self.interval = 5  # Интервал по умолчанию в минутах
+        self.interval = 15  # Интервал по умолчанию в минутах
         self.running = False
 
     async def client_ready(self, client, db):
@@ -70,7 +70,7 @@ class soobxp(loader.Module):
             await message.edit(f"<b>Чат {args} уже находится в списке для рассылки.</b>")
 
     @loader.command()
-    async def chats(self, message):
+    async def chatss(self, message):
         """- показать список чатов для рассылки"""
         if not self.chats:
             await message.edit("<b>Список чатов для рассылки пуст.</b>")
