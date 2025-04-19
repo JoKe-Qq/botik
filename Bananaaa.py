@@ -15,7 +15,7 @@ class soobxp(loader.Module):
         self.chats_file = "chats_list.txt"
         self.chats = self.load_chats()
         self.message_to_send = None
-        self.interval = 15  # Интервал по умолчанию в минутах
+        self.interval = 10  # Интервал по умолчанию в минутах
         self.running = False
         self.sent_chats = set()  # Отслеживание отправленных чатов
 
@@ -123,7 +123,7 @@ async def rassil(self, message):
         while self.running:
             for chat in self.chats:
                 try:
-                    delay = random.uniform(5, 10)  # Рандомная задержка от 5 до 10 секунд
+                    delay = random.uniform(1, 3)  # Рандомная задержка от 1 до 3 секунд
                     await asyncio.sleep(delay)
 
                     # Отправляем сообщение (текст и вложения)
