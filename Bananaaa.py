@@ -103,44 +103,42 @@ class soobxp(loader.Module):
         self.interval = int(args)
         await message.edit(f"<b>Интервал рассылки установлен на {self.interval} минут.</b>")
 
-    @loader.command()
-    async def rassil(self, message):
-        """- разослать сохраненное сообщение по указанным чатам через интервал времени"""
-        if not self.message_to_send:
-            await message.edit("<b>Нет сообщения для рассылки.</b>")
-            return
-        if not self.chats:
-            await message.edit("<b>Список чатов для рассылки пуст.</b>")
-            return
-        if self.running:
-            await message.edit("<b>Рассылка уже запущена.</b>")
-            return
+@loader.command()
+async def rassil(self, message):
+    """- разослать сохраненное сообщение по указанным чатам через интервал времени"""
+    if not self.message_to_send:
+        await message.edit("<b>Нет сообщения для рассылки.</b>")
+        return
+    if not self.chats:
+        await message.edit("<b>Список чатов для рассылки пуст.</b>")
+        return
+    if self.running:
+        await message.edit("<b>Рассылка уже запущена.</b>")
+        return
 
-        await message.edit(f"<b>Начинаю рассылку каждые {self.interval} минут...</b>")
-        self.running = True
-        self.sent_chats = set()  # Сбрасываем список отправленных чатов
+    await message.edit(f"<b>Начинаю рассылку каждые {self.interval} минут...</b>")
+    self.running = True
 
-        try:
-            while self.running:
-                for chat in self.chats:
-                    if chat in self.sent_chats:  # Пропускаем уже отправленные чаты
-                        continue
-                    try:
-                        delay = random.uniform(1, 3)  # Рандомная задержка от 5 до 10 секунд
-                        await asyncio.sleep(delay)
+    try:
+        while self.running:
+            for chat in self.chats:
+                try:
+                    delay = random.uniform(5, 10)  # Рандомная задержка от 5 до 10 секунд
+                    await asyncio.sleep(delay)
 
-                        # Отправляем сообщение (текст и вложения)
-                        if self.message_to_send.media:  # Если есть вложение
-                            await self.client.send_file(chat, self.message_to_send.media, caption=self.message_to_send.text)
-                        else:
-                            await self.client.send_message(chat, self.message_to_send.text)
+                    # Отправляем сообщение (текст и вложения)
+                    if self.message_to_send.media:  # Если есть вложение
+                        await self.client.send_file(chat, self.message_to_send.media, caption=self.message_to_send.text)
+                    else:
+                        await self.client.send_message(chat, self.message_to_send.text)
 
-                        self.sent_chats.add(chat)  # Отмечаем чат как обработанный
-                    except Exception as e:
-                        print(f"Ошибка при отправке в чат {chat}: {e}")  # Логируем ошибку, но не прерываем рассылку
-                await asyncio.sleep(self.interval * 60)
-        finally:
-            self.running = False
+                except Exception as e:
+                    print(f"Ошибка при отправке в чат {chat}: {e}")  # Логируем ошибку, но не прерываем рассылку
+
+            # Задержка между циклами рассылки
+            await asyncio.sleep(self.interval * 60)
+    finally:
+        self.running = False
 
     @loader.command()
     async def stopr(self, message):
