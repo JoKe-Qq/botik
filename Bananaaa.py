@@ -17,6 +17,7 @@ class soobxp(loader.Module):
         self.message_to_send = None
         self.interval = 15  # Интервал по умолчанию в минутах
         self.running = False
+        self.sent_chats = set()  # Отслеживание отправленных чатов
 
     async def client_ready(self, client, db):
         self.client = client
@@ -111,19 +112,35 @@ class soobxp(loader.Module):
         if not self.chats:
             await message.edit("<b>Список чатов для рассылки пуст.</b>")
             return
+        if self.running:
+            await message.edit("<b>Рассылка уже запущена.</b>")
+            return
 
         await message.edit(f"<b>Начинаю рассылку каждые {self.interval} минут...</b>")
         self.running = True
-        
-        while self.running:
-            for chat in self.chats:
-                try:
-                    delay = random.uniform(1, 5)  # Рандомная задержка от 1 до 5 секунд
-                    await asyncio.sleep(delay)
-                    await self.client.send_message(chat, self.message_to_send)
-                except Exception as e:
-                    await message.edit(f"<b>Ошибка при отправке в чат {chat}: {e}</b>")
-            await asyncio.sleep(self.interval * 60)
+        self.sent_chats = set()  # Сбрасываем список отправленных чатов
+
+        try:
+            while self.running:
+                for chat in self.chats:
+                    if chat in self.sent_chats:  # Пропускаем уже отправленные чаты
+                        continue
+                    try:
+                        delay = random.uniform(5, 10)  # Рандомная задержка от 5 до 10 секунд
+                        await asyncio.sleep(delay)
+
+                        # Отправляем сообщение (текст и вложения)
+                        if self.message_to_send.media:  # Если есть вложение
+                            await self.client.send_file(chat, self.message_to_send.media, caption=self.message_to_send.text)
+                        else:
+                            await self.client.send_message(chat, self.message_to_send.text)
+
+                        self.sent_chats.add(chat)  # Отмечаем чат как обработанный
+                    except Exception as e:
+                        print(f"Ошибка при отправке в чат {chat}: {e}")  # Логируем ошибку, но не прерываем рассылку
+                await asyncio.sleep(self.interval * 60)
+        finally:
+            self.running = False
 
     @loader.command()
     async def stopr(self, message):
