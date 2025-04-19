@@ -94,7 +94,7 @@ class soobxp(loader.Module):
             await message.edit(f"<b>Чат {args} не найден в списке для рассылки.</b>")
 
     @loader.command()
-    async def interval(self, message):
+    async def minterval(self, message):
         """- установить интервал рассылки (в минутах)"""
         args = utils.get_args_raw(message)
         if not args or not args.isdigit():
