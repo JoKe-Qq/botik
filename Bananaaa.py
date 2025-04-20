@@ -1,13 +1,12 @@
 from telethon import events
 from .. import loader, utils
 import asyncio
-import random
 import re
 import os
 
 class soobxp(loader.Module):
     """
-    Модуль для получения бана из-за рассылки по чатам от @j_0_k_e.
+    Модуль для рассылки сообщений по чатам от @j_0_k_e.
     """
     strings = {"name": "rassil"}
 
@@ -16,8 +15,7 @@ class soobxp(loader.Module):
         self.chats = self.load_chats()
         self.message_to_send = None
         self.interval = 10  # Интервал по умолчанию в минутах
-        self.running = False
-        self.sent_chats = set()  # Отслеживание отправленных чатов
+        self.running = False  # Статус рассылки
 
     async def client_ready(self, client, db):
         self.client = client
@@ -123,8 +121,8 @@ class soobxp(loader.Module):
             while self.running:
                 for chat in self.chats:
                     try:
-                        delay = random.uniform(1, 3)  # Рандомная задержка от 1 до 3 секунд
-                        await asyncio.sleep(delay)
+                        # Минимальная задержка между сообщениями (примерно 5 миллисекунд)
+                        await asyncio.sleep(0.005)
 
                         # Отправляем сообщение (текст и вложения)
                         if self.message_to_send.media:  # Если есть вложение
