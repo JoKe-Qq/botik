@@ -3,11 +3,12 @@ from .. import loader, utils
 import asyncio
 import re
 import os
+import time
 
 
 class soobxp(loader.Module):
     """
-    Модуль для получения бана из-за рассылки сообщений по чатам от @j_0_k_e.
+    Модуль для рассылки сообщений по чатам с контролем интервалов, от @j_0_k_e.
     """
     strings = {"name": "rassil"}
 
@@ -17,15 +18,17 @@ class soobxp(loader.Module):
         self.message_to_send = None
         self.interval = 10  # Интервал по умолчанию в минутах
         self.running = False  # Статус рассылки
+        self.last_sent_time = {}  # Время последней отправки по каждому чату
 
     async def client_ready(self, client, db):
         self.client = client
 
     def load_chats(self):
-        """Загружает список чатов из файла."""
+        """Загружает список чатов из файла, исключая дубликаты."""
         if os.path.exists(self.chats_file):
             with open(self.chats_file, "r") as file:
-                return [line.strip() for line in file.readlines() if line.strip()]
+                chats = [line.strip() for line in file.readlines() if line.strip()]
+                return list(set(chats))  # Убираем дубликаты
         return []
 
     def save_chats(self):
@@ -127,18 +130,39 @@ class soobxp(loader.Module):
             while self.running:
                 for chat in self.chats:
                     try:
-                        await asyncio.sleep(0.005)  # Минимальная задержка между сообщениями
-                        # Отправляем сообщение (текст и вложения)
+                        current_time = time.time()
+                        # Проверяем, был ли отправлен месседж в этот чат в пределах интервала
+                        if chat in self.last_sent_time and current_time - self.last_sent_time[chat] < self.interval * 60:
+                            print(f"Пропускаем чат {chat} (интервал ещё не истёк)")
+                            continue
+
+                        # Отправляем сообщение
                         if self.message_to_send.media:
                             await self.client.send_file(chat, self.message_to_send.media, caption=self.message_to_send.text)
                         else:
                             await self.client.send_message(chat, self.message_to_send.text)
 
+                        # Логируем время отправки
+                        self.last_sent_time[chat] = current_time
+                        print(f"Сообщение успешно отправлено в чат {chat}")
+
                     except Exception as e:
+                        if "file reference has expired" in str(e).lower():
+                            await self.client.send_message("me", f"Рассылка остановлена: срок действия ссылки сообщения истёк.\nОшибка: {e}")
+                            print("Срок действия ссылки истёк. Рассылка остановлена.")
+                            self.running = False
+                            return
+
                         print(f"Ошибка при отправке в чат {chat}: {e}")
+                        await self.client.send_message("me", f"Ошибка при отправке в чат {chat}: {e}")
+                        continue  # Переходим к следующему чату
 
                 # Задержка между циклами рассылки
                 await asyncio.sleep(self.interval * 60)
+
+        except Exception as e:
+            print(f"Критическая ошибка рассылки: {e}")
+            await self.client.send_message("me", f"Рассылка остановлена из-за ошибки: {str(e)}")
         finally:
             self.running = False
 
