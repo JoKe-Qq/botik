@@ -4,6 +4,7 @@ import asyncio
 import re
 import os
 
+
 class soobxp(loader.Module):
     """
     Модуль для рассылки сообщений по чатам от @j_0_k_e.
@@ -102,6 +103,11 @@ class soobxp(loader.Module):
         await message.edit(f"<b>Интервал рассылки установлен на {self.interval} минут.</b>")
 
     @loader.command()
+    async def getinterval(self, message):
+        """- показать текущий интервал рассылки"""
+        await message.edit(f"<b>Текущий интервал рассылки: {self.interval} минут.</b>")
+
+    @loader.command()
     async def rassil(self, message):
         """- разослать сохраненное сообщение по указанным чатам через интервал времени"""
         if not self.message_to_send:
@@ -121,17 +127,15 @@ class soobxp(loader.Module):
             while self.running:
                 for chat in self.chats:
                     try:
-                        # Минимальная задержка между сообщениями (примерно 5 миллисекунд)
-                        await asyncio.sleep(0.005)
-
+                        await asyncio.sleep(0.005)  # Минимальная задержка между сообщениями
                         # Отправляем сообщение (текст и вложения)
-                        if self.message_to_send.media:  # Если есть вложение
+                        if self.message_to_send.media:
                             await self.client.send_file(chat, self.message_to_send.media, caption=self.message_to_send.text)
                         else:
                             await self.client.send_message(chat, self.message_to_send.text)
 
                     except Exception as e:
-                        print(f"Ошибка при отправке в чат {chat}: {e}")  # Логируем ошибку, но не прерываем рассылку
+                        print(f"Ошибка при отправке в чат {chat}: {e}")
 
                 # Задержка между циклами рассылки
                 await asyncio.sleep(self.interval * 60)
