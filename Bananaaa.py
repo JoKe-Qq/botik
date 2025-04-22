@@ -24,11 +24,33 @@ class banan(loader.Module):
         self.client = client
 
     def load_chats(self):
-        """Загружает список чатов из файла, исключая дубликаты."""
+        """Загружает список чатов из файла, исключая дубликаты, и конвертирует теги в ID."""
         if os.path.exists(self.chats_file):
             with open(self.chats_file, "r") as file:
                 chats = [line.strip() for line in file.readlines() if line.strip()]
-            return list(set(chats))
+            
+            updated_chats = []
+            for chat in set(chats):
+                parts = chat.split(" | ")
+                chat_id = parts[0]
+                chat_link = parts[1] if len(parts) > 1 else "Unknown"
+                chat_name = parts[2] if len(parts) > 2 else "Unknown"
+
+                if chat_id.startswith("@"):  # Если это тег
+                    try:
+                        # Конвертируем тег в ID
+                        entity = self.client.get_entity(chat_id)
+                        chat_id = str(entity.id)
+                        chat_link = f"@{entity.username}" if entity.username else "Unknown"
+                        chat_name = entity.title
+                    except Exception as e:
+                        print(f"Ошибка при конвертации тега {chat}: {e}")
+                updated_chats.append(f"{chat_id} | {chat_link} | {chat_name}")
+
+            # Сохраняем обновлённый список чатов
+            self.chats = updated_chats
+            self.save_chats()
+            return updated_chats
         return []
 
     def save_chats(self):
@@ -120,49 +142,6 @@ class banan(loader.Module):
 
         except Exception as e:
             await message.edit(f"<b>Ошибка: {e}</b>")
-
-    @loader.command()
-    async def rassil(self, message):
-        """- разослать сохраненное сообщение по указанным чатам через интервал времени"""
-        if not self.message_to_send:
-            await message.edit("<b>Нет сообщения для рассылки.</b>")
-            return
-        if not self.chats:
-            await message.edit("<b>Список чатов для рассылки пуст.</b>")
-            return
-        if self.running:
-            await message.edit("<b>Рассылка уже запущена.</b>")
-            return
-
-        await message.edit(f"<b>Начинаю рассылку каждые {self.interval} минут...</b>")
-        self.running = True
-
-        try:
-            while self.running:
-                for chat in self.chats:
-                    try:
-                        # Отправляем сообщение по ID
-                        chat_id = int(chat.split(" | ")[0])  # Извлекаем ID
-                        if self.message_to_send.media:
-                            await self.client.send_file(chat_id, self.message_to_send.media, caption=self.message_to_send.text)
-                        else:
-                            await self.client.send_message(chat_id, self.message_to_send.text)
-
-                        print(f"Сообщение успешно отправлено в чат {chat_id}")
-
-                    except Exception as e:
-                        print(f"Ошибка при отправке в чат {chat}: {e}")
-                        await self.client.send_message("me", f"Ошибка при отправке в чат {chat}: {e}")
-                        continue
-
-                # Задержка между циклами рассылки
-                await asyncio.sleep(self.interval * 60)
-
-        except Exception as e:
-            print(f"Критическая ошибка рассылки: {e}")
-            await self.client.send_message("me", f"Рассылка остановлена из-за ошибки: {str(e)}")
-        finally:
-            self.running = False
 
     @loader.command()
     async def updatechats(self, message):
