@@ -28,7 +28,7 @@ class banan(loader.Module):
         if os.path.exists(self.chats_file):
             with open(self.chats_file, "r") as file:
                 chats = [line.strip() for line in file.readlines() if line.strip()]
-                return list(set(chats))  # Убираем дубликаты
+            return list(set(chats))
         return []
 
     def save_chats(self):
@@ -36,9 +36,16 @@ class banan(loader.Module):
         with open(self.chats_file, "w") as file:
             file.write("\n".join(self.chats))
 
-    def is_valid_chat(self, chat):
-        """Проверяет корректность адреса чата."""
-        return re.match(r"^@\w+$", chat) or chat.isdigit() or chat.startswith("-100")
+    async def resolve_chat_info(self, chat):
+        """
+        Преобразовывает тег (@examplegroup) или ID в полную информацию о чате.
+        Возвращает строку в формате: "ID | @username | Название".
+        """
+        entity = await self.client.get_entity(chat)
+        chat_id = str(entity.id)
+        chat_link = f"@{entity.username}" if entity.username else "Unknown"
+        chat_name = entity.title
+        return f"{chat_id} | {chat_link} | {chat_name}"
 
     @loader.command()
     async def sxr(self, message):
@@ -62,15 +69,25 @@ class banan(loader.Module):
     async def dchat(self, message):
         """- добавить чат в список для рассылки (использовать только с @username или chat_id)"""
         args = utils.get_args_raw(message)
-        if not args or not self.is_valid_chat(args):
+        if not args:
             await message.edit("<b>Укажите корректный @username или chat_id чата для добавления.</b>")
             return
-        if args not in self.chats:
-            self.chats.append(args)
-            self.save_chats()
-            await message.edit(f"<b>Чат {args} добавлен в список для рассылки.</b>")
-        else:
-            await message.edit(f"<b>Чат {args} уже находится в списке для рассылки.</b>")
+
+        try:
+            # Преобразуем тег или ID в полную информацию
+            chat_info = await self.resolve_chat_info(args)
+
+            chat_id = chat_info.split(" | ")[0]  # Извлекаем ID
+            if chat_id not in [c.split(" | ")[0] for c in self.chats]:
+                # Сохраняем информацию о чате
+                self.chats.append(chat_info)
+                self.save_chats()
+                await message.edit(f"<b>Чат добавлен в список для рассылки:</b>\n<code>{chat_info}</code>")
+            else:
+                await message.edit(f"<b>Чат уже находится в списке для рассылки:</b>\n<code>{chat_info}</code>")
+
+        except Exception as e:
+            await message.edit(f"<b>Ошибка: {e}</b>")
 
     @loader.command()
     async def chatss(self, message):
@@ -79,7 +96,7 @@ class banan(loader.Module):
             await message.edit("<b>Список чатов для рассылки пуст.</b>")
         else:
             chat_list = "\n".join(self.chats)
-            await message.edit(f"<b>Список чатов для рассылки:</b>\n{chat_list}")
+            await message.edit(f"<b>Список чатов для рассылки:</b>\n<code>{chat_list}</code>")
 
     @loader.command()
     async def delchat(self, message):
@@ -88,27 +105,21 @@ class banan(loader.Module):
         if not args:
             await message.edit("<b>Укажите @username или chat_id чата для удаления.</b>")
             return
-        if args in self.chats:
-            self.chats.remove(args)
-            self.save_chats()
-            await message.edit(f"<b>Чат {args} удален из списка для рассылки.</b>")
-        else:
-            await message.edit(f"<b>Чат {args} не найден в списке для рассылки.</b>")
 
-    @loader.command()
-    async def minterval(self, message):
-        """- установить интервал рассылки (в минутах)"""
-        args = utils.get_args_raw(message)
-        if not args or not args.isdigit():
-            await message.edit("<b>Укажите интервал в минутах.</b>")
-            return
-        self.interval = int(args)
-        await message.edit(f"<b>Интервал рассылки установлен на {self.interval} минут.</b>")
+        try:
+            # Преобразуем тег или ID в полную информацию
+            chat_info = await self.resolve_chat_info(args)
 
-    @loader.command()
-    async def getinterval(self, message):
-        """- показать текущий интервал рассылки"""
-        await message.edit(f"<b>Текущий интервал рассылки: {self.interval} минут.</b>")
+            chat_id = chat_info.split(" | ")[0]  # Извлекаем ID
+            if chat_id in [c.split(" | ")[0] for c in self.chats]:
+                self.chats = [c for c in self.chats if not c.startswith(chat_id)]
+                self.save_chats()
+                await message.edit(f"<b>Чат удалён из списка для рассылки:</b>\n<code>{chat_info}</code>")
+            else:
+                await message.edit(f"<b>Чат не найден в списке для рассылки:</b>\n<code>{chat_info}</code>")
+
+        except Exception as e:
+            await message.edit(f"<b>Ошибка: {e}</b>")
 
     @loader.command()
     async def rassil(self, message):
@@ -130,35 +141,19 @@ class banan(loader.Module):
             while self.running:
                 for chat in self.chats:
                     try:
-                        # Преобразуем ID в int, если это числовой ID
-                        chat_id = int(chat) if chat.isdigit() else chat
-
-                        # Проверяем интервал
-                        current_time = time.time()
-                        if chat in self.last_sent_time and current_time - self.last_sent_time[chat] < self.interval * 60:
-                            print(f"Пропускаем чат {chat} (интервал ещё не истёк)")
-                            continue
-
-                        # Отправляем сообщение
+                        # Отправляем сообщение по ID
+                        chat_id = int(chat.split(" | ")[0])  # Извлекаем ID
                         if self.message_to_send.media:
                             await self.client.send_file(chat_id, self.message_to_send.media, caption=self.message_to_send.text)
                         else:
                             await self.client.send_message(chat_id, self.message_to_send.text)
 
-                        # Логируем время отправки
-                        self.last_sent_time[chat] = current_time
                         print(f"Сообщение успешно отправлено в чат {chat_id}")
 
                     except Exception as e:
-                        if "file reference has expired" in str(e).lower():
-                            await self.client.send_message("me", f"Рассылка остановлена: срок действия ссылки сообщения истёк.\nОшибка: {e}")
-                            print("Срок действия ссылки истёк. Рассылка остановлена.")
-                            self.running = False
-                            return
-
                         print(f"Ошибка при отправке в чат {chat}: {e}")
                         await self.client.send_message("me", f"Ошибка при отправке в чат {chat}: {e}")
-                        continue  # Переходим к следующему чату
+                        continue
 
                 # Задержка между циклами рассылки
                 await asyncio.sleep(self.interval * 60)
@@ -170,43 +165,27 @@ class banan(loader.Module):
             self.running = False
 
     @loader.command()
-    async def stopr(self, message):
-        """- остановить рассылку сообщений"""
-        if self.running:
-            self.running = False
-            await message.edit("<b>Рассылка сообщений остановлена.</b>")
-        else:
-            await message.edit("<b>Рассылка сообщений не активна.</b>")
+    async def updatechats(self, message):
+        """- обновить названия и ссылки для чатов в списке"""
+        if not self.chats:
+            await message.edit("<b>Список чатов для обновления пуст.</b>")
+            return
 
-    @loader.command()
-    async def adchat(self, message):
-        """- добавить текущий чат в список для рассылки и уведомить в избранное"""
-        try:
-            # Получаем информацию о текущем чате
-            chat = await message.get_chat()
-            chat_id = str(chat.id)  # Преобразуем ID чата в строку для хранения
+        updated_chats = []
+        for chat in self.chats:
+            try:
+                # Разделяем строку на ID, ссылку, имя
+                parts = chat.split(" | ")
+                chat_id = parts[0]  # ID чата
 
-            # Проверяем, есть ли чат уже в списке
-            if chat_id in self.chats:
-                await self.client.send_message(
-                    "me", f"Чат <code>{chat_id}</code> уже находится в списке для рассылки."
-                )
-                await message.delete()  # Удаляем сообщение с командой
-                return
+                # Получаем обновлённую информацию о чате
+                entity = await self.client.get_entity(int(chat_id))
+                updated_chats.append(f"{chat_id} | @{entity.username or 'Unknown'} | {entity.title}")
+            except Exception as e:
+                print(f"Ошибка при обновлении информации о чате {chat}: {e}")
+                updated_chats.append(chat)  # Сохраняем оригинал, если не удалось
 
-            # Добавляем чат в список
-            self.chats.append(chat_id)
-            self.save_chats()
-
-            # Отправляем уведомление в избранное
-            await self.client.send_message(
-                "me", f"Чат <code>{chat_id}</code> успешно добавлен в список для рассылки."
-            )
-
-            # Удаляем сообщение с командой
-            await message.delete()
-
-        except Exception as e:
-            # Обрабатываем возможные ошибки
-            await self.client.send_message("me", f"Ошибка при добавлении текущего чата: {e}")
-            await message.delete()  # Удаляем сообщение с командой
+        # Сохраняем обновлённые данные
+        self.chats = updated_chats
+        self.save_chats()
+        await message.edit("<b>Информация о чатах успешно обновлена.</b>")
