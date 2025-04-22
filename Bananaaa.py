@@ -71,6 +71,21 @@ class banan(loader.Module):
         chat_name = entity.title
         return f"{chat_id} | {chat_link} | {chat_name}"
 
+    async def refresh_message(self):
+        """
+        Пересохраняет текущее сообщение для рассылки.
+        Это продлевает срок действия ссылки на медиа (если есть вложение).
+        """
+        if self.message_to_send:
+            try:
+                if self.message_to_send.media:
+                    self.message_to_send = await self.message_to_send.reply("Сообщение обновлено для продления срока действия.")
+                else:
+                    self.message_to_send = await self.message_to_send.reply(self.message_to_send.text)
+                print("Сообщение для рассылки обновлено.")
+            except Exception as e:
+                print(f"Ошибка при обновлении сообщения: {e}")
+
     @loader.command()
     async def sxr(self, message):
         """- сохранить сообщение для рассылки (использовать в ответ на сообщение)"""
@@ -88,6 +103,24 @@ class banan(loader.Module):
             await message.edit("<b>Сообщение для рассылки не сохранено.</b>")
         else:
             await self.client.send_message(message.chat_id, self.message_to_send)
+
+    @loader.command()
+    async def chatss(self, message):
+        """- показать список чатов для рассылки"""
+        if not self.chats:
+            await message.edit("<b>Список чатов для рассылки пуст.</b>")
+            return
+
+        chat_list = "\n".join(self.chats)
+        max_length = 4000  # Устанавливаем лимит длины сообщения (немного меньше 4096 для безопасности)
+        
+        if len(chat_list) > max_length:
+            parts = [chat_list[i:i+max_length] for i in range(0, len(chat_list), max_length)]
+            for part in parts:
+                await self.client.send_message(message.chat_id, f"<b>Список чатов для рассылки:</b>\n<code>{part}</code>")
+            await message.delete()
+        else:
+            await message.edit(f"<b>Список чатов для рассылки:</b>\n<code>{chat_list}</code>")
 
     @loader.command()
     async def dchat(self, message):
@@ -108,25 +141,6 @@ class banan(loader.Module):
                 await message.edit(f"<b>Чат уже находится в списке для рассылки:</b>\n<code>{chat_info}</code>")
         except Exception as e:
             await message.edit(f"<b>Ошибка: {e}</b>")
-
-    @loader.command()
-async def chatss(self, message):
-    """- показать список чатов для рассылки"""
-    if not self.chats:
-        await message.edit("<b>Список чатов для рассылки пуст.</b>")
-        return
-
-    chat_list = "\n".join(self.chats)
-    max_length = 4000  # Устанавливаем лимит длины сообщения (немного меньше 4096 для безопасности)
-    
-    # Если список чатов слишком длинный, разбиваем его на части
-    if len(chat_list) > max_length:
-        parts = [chat_list[i:i+max_length] for i in range(0, len(chat_list), max_length)]
-        for part in parts:
-            await self.client.send_message(message.chat_id, f"<b>Список чатов для рассылки:</b>\n<code>{part}</code>")
-        await message.delete()  # Удаляем оригинальное сообщение с командой
-    else:
-        await message.edit(f"<b>Список чатов для рассылки:</b>\n<code>{chat_list}</code>")
 
     @loader.command()
     async def delchat(self, message):
@@ -155,7 +169,7 @@ async def chatss(self, message):
         if not args or not args.isdigit():
             await message.edit("<b>Укажите интервал в минутах.</b>")
             return
-        self.interval = int(args)
+        self.interval = max(5, int(args))
         await message.edit(f"<b>Интервал рассылки установлен на {self.interval} минут.</b>")
 
     @loader.command()
@@ -183,7 +197,7 @@ async def chatss(self, message):
             while self.running:
                 for chat in self.chats:
                     try:
-                        chat_id = int(chat.split(" | ")[0])  # Извлекаем ID
+                        chat_id = int(chat.split(" | ")[0])
                         if self.message_to_send.media:
                             await self.client.send_file(chat_id, self.message_to_send.media, caption=self.message_to_send.text)
                         else:
@@ -194,6 +208,7 @@ async def chatss(self, message):
                         print(f"Ошибка при отправке в чат {chat}: {e}")
                         await self.client.send_message("me", f"Ошибка при отправке в чат {chat}: {e}")
                         continue
+                await self.refresh_message()
                 await asyncio.sleep(self.interval * 60)
         except Exception as e:
             print(f"Критическая ошибка рассылки: {e}")
