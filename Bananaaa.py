@@ -24,31 +24,10 @@ class banan(loader.Module):
         self.client = client
 
     def load_chats(self):
-        """Загружает список чатов из файла, конвертирует теги в ID и исключает дубликаты."""
+        """Загружает список чатов из файла."""
         if os.path.exists(self.chats_file):
             with open(self.chats_file, "r") as file:
-                chats = [line.strip() for line in file.readlines() if line.strip()]
-
-            updated_chats = []
-            for chat in set(chats):
-                parts = chat.split(" | ")
-                chat_id = parts[0]
-                chat_link = parts[1] if len(parts) > 1 else "Unknown"
-                chat_name = parts[2] if len(parts) > 2 else "Unknown"
-
-                if chat_id.startswith("@"):  # Если это тег
-                    try:
-                        entity = self.client.get_entity(chat_id)
-                        chat_id = str(entity.id)
-                        chat_link = f"@{entity.username}" if entity.username else "Unknown"
-                        chat_name = entity.title
-                    except Exception as e:
-                        print(f"Ошибка при конвертации тега {chat}: {e}")
-                updated_chats.append(f"{chat_id} | {chat_link} | {chat_name}")
-
-            self.chats = updated_chats
-            self.save_chats()
-            return updated_chats
+                return [line.strip() for line in file.readlines() if line.strip()]
         return []
 
     def save_chats(self):
@@ -56,34 +35,36 @@ class banan(loader.Module):
         with open(self.chats_file, "w") as file:
             file.write("\n".join(self.chats))
 
-    def is_valid_chat(self, chat):
-        """Проверяет корректность адреса чата."""
-        return re.match(r"^@\w+$", chat) or chat.isdigit() or chat.startswith("-100")
-
-    async def resolve_chat_info(self, chat):
-        """
-        Преобразовывает тег (@examplegroup) или ID в полную информацию о чате.
-        Возвращает строку в формате: "ID | @username | Название".
-        """
-        entity = await self.client.get_entity(chat)
-        chat_id = str(entity.id)
-        chat_link = f"@{entity.username}" if entity.username else "Unknown"
-        chat_name = entity.title
-        return f"{chat_id} | {chat_link} | {chat_name}"
-
     async def refresh_message(self):
         """
         Пересохраняет текущее сообщение для рассылки.
         Это продлевает срок действия ссылки на медиа (если есть вложение).
+        Уведомления отправляются отдельно в "Избранное", чтобы не перезаписывать исходное сообщение.
         """
         if self.message_to_send:
             try:
                 if self.message_to_send.media:
-                    self.message_to_send = await self.message_to_send.reply("Сообщение обновлено для продления срока действия.")
+                    updated_message = await self.client.send_file(
+                        "me", self.message_to_send.media, caption=self.message_to_send.text
+                    )
                 else:
-                    self.message_to_send = await self.message_to_send.reply(self.message_to_send.text)
+                    updated_message = await self.client.send_message(
+                        "me", self.message_to_send.text
+                    )
+
+                # Сохраняем обновлённое сообщение для рассылки
+                self.message_to_send = updated_message
+
+                # Уведомляем отдельно, чтобы не перезаписывать сообщение
+                await self.client.send_message(
+                    "me", "<b>Сообщение успешно обновлено для продления срока действия.</b>"
+                )
                 print("Сообщение для рассылки обновлено.")
             except Exception as e:
+                # Логируем ошибку в личные сообщения
+                await self.client.send_message(
+                    "me", f"<b>Ошибка при обновлении сообщения:</b> {e}"
+                )
                 print(f"Ошибка при обновлении сообщения: {e}")
 
     @loader.command()
