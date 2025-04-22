@@ -110,13 +110,23 @@ class banan(loader.Module):
             await message.edit(f"<b>Ошибка: {e}</b>")
 
     @loader.command()
-    async def chatss(self, message):
-        """- показать список чатов для рассылки"""
-        if not self.chats:
-            await message.edit("<b>Список чатов для рассылки пуст.</b>")
-        else:
-            chat_list = "\n".join(self.chats)
-            await message.edit(f"<b>Список чатов для рассылки:</b>\n<code>{chat_list}</code>")
+async def chatss(self, message):
+    """- показать список чатов для рассылки"""
+    if not self.chats:
+        await message.edit("<b>Список чатов для рассылки пуст.</b>")
+        return
+
+    chat_list = "\n".join(self.chats)
+    max_length = 4000  # Устанавливаем лимит длины сообщения (немного меньше 4096 для безопасности)
+    
+    # Если список чатов слишком длинный, разбиваем его на части
+    if len(chat_list) > max_length:
+        parts = [chat_list[i:i+max_length] for i in range(0, len(chat_list), max_length)]
+        for part in parts:
+            await self.client.send_message(message.chat_id, f"<b>Список чатов для рассылки:</b>\n<code>{part}</code>")
+        await message.delete()  # Удаляем оригинальное сообщение с командой
+    else:
+        await message.edit(f"<b>Список чатов для рассылки:</b>\n<code>{chat_list}</code>")
 
     @loader.command()
     async def delchat(self, message):
