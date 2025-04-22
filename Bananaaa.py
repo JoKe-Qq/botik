@@ -6,7 +6,7 @@ import os
 import time
 
 
-class soobxp(loader.Module):
+class banan(loader.Module):
     """
     Модуль для получения бана 🥵 из-за рассылки от @j_0_k_e.
     """
