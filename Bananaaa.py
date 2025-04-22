@@ -233,15 +233,32 @@ class banan(loader.Module):
             return
 
         updated_chats = []
+        unresolved_chats = []  # Для логирования чатов, которые не удалось обновить
+
         for chat in self.chats:
             try:
                 parts = chat.split(" | ")
                 chat_id = parts[0]
-                entity = await self.client.get_entity(int(chat_id))
-                updated_chats.append(f"{chat_id} | @{entity.username or 'Unknown'} | {entity.title}")
+                entity = await self.client.get_entity(int(chat_id) if chat_id.isdigit() else chat_id)
+                
+                # Извлекаем обновленную информацию
+                updated_chat_id = str(entity.id)
+                updated_username = f"@{entity.username}" if entity.username else "Unknown"
+                updated_title = entity.title if entity.title else "Unknown"
+                
+                updated_chats.append(f"{updated_chat_id} | {updated_username} | {updated_title}")
             except Exception as e:
                 print(f"Ошибка при обновлении информации о чате {chat}: {e}")
-                updated_chats.append(chat)
+                unresolved_chats.append(chat)  # Добавляем в список проблемных чатов
+
         self.chats = updated_chats
         self.save_chats()
-        await message.edit("<b>Информация о чатах успешно обновлена.</b>")
+
+        # Формируем сообщение об обновлении
+        if unresolved_chats:
+            unresolved_list = "\n".join(unresolved_chats)
+            await message.edit(
+                f"<b>Информация о чатах успешно обновлена, но следующие чаты не удалось обновить:</b>\n<code>{unresolved_list}</code>"
+            )
+        else:
+            await message.edit("<b>Информация о чатах успешно обновлена.</b>")
