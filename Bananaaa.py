@@ -177,3 +177,36 @@ class banan(loader.Module):
             await message.edit("<b>Рассылка сообщений остановлена.</b>")
         else:
             await message.edit("<b>Рассылка сообщений не активна.</b>")
+
+    @loader.command()
+    async def adchat(self, message):
+        """- добавить текущий чат в список для рассылки и уведомить в избранное"""
+        try:
+            # Получаем информацию о текущем чате
+            chat = await message.get_chat()
+            chat_id = str(chat.id)  # Преобразуем ID чата в строку для хранения
+
+            # Проверяем, есть ли чат уже в списке
+            if chat_id in self.chats:
+                await self.client.send_message(
+                    "me", f"Чат <code>{chat_id}</code> уже находится в списке для рассылки."
+                )
+                await message.delete()  # Удаляем сообщение с командой
+                return
+
+            # Добавляем чат в список
+            self.chats.append(chat_id)
+            self.save_chats()
+
+            # Отправляем уведомление в избранное
+            await self.client.send_message(
+                "me", f"Чат <code>{chat_id}</code> успешно добавлен в список для рассылки."
+            )
+
+            # Удаляем сообщение с командой
+            await message.delete()
+
+        except Exception as e:
+            # Обрабатываем возможные ошибки
+            await self.client.send_message("me", f"Ошибка при добавлении текущего чата: {e}")
+            await message.delete()  # Удаляем сообщение с командой
