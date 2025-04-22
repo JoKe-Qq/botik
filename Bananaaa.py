@@ -88,7 +88,7 @@ class banan(loader.Module):
 
     @loader.command()
     async def sxr(self, message):
-        """- сохранить сообщение для рассылки (использовать в ответ на сообщение)"""
+        """- сохраняет сообщение для рассылки (использовать в ответ на сообщение)"""
         reply = await message.get_reply_message()
         if not reply:
             await message.edit("<b>Нет сообщения для сохранения. Используйте эту команду в ответ на сообщение.</b>")
@@ -98,7 +98,7 @@ class banan(loader.Module):
 
     @loader.command()
     async def psxr(self, message):
-        """- показать сохраненное сообщение для рассылки"""
+        """- показывает сохр. соо для рассылки"""
         if not self.message_to_send:
             await message.edit("<b>Сообщение для рассылки не сохранено.</b>")
         else:
@@ -106,7 +106,7 @@ class banan(loader.Module):
 
     @loader.command()
     async def chatss(self, message):
-        """- показать список чатов для рассылки"""
+        """- показывает список чатов для рассылки"""
         if not self.chats:
             await message.edit("<b>Список чатов для рассылки пуст.</b>")
             return
@@ -123,8 +123,36 @@ class banan(loader.Module):
             await message.edit(f"<b>Список чатов для рассылки:</b>\n<code>{chat_list}</code>")
 
     @loader.command()
+    async def adchat(self, message):
+        """- добавляет тот чат в котором написали эту команду в список чатов для рассылки"""
+        try:
+            chat = await message.get_chat()
+            chat_id = str(chat.id)
+            chat_username = f"@{chat.username}" if chat.username else "Unknown"
+            chat_title = chat.title if chat.title else "Unknown"
+
+            chat_info = f"{chat_id} | {chat_username} | {chat_title}"
+            log_message = ""
+
+            if chat_id not in [c.split(" | ")[0] for c in self.chats]:
+                self.chats.append(chat_info)
+                self.save_chats()
+                log_message = f"<b>Успешно добавлено:</b>\n<code>{chat_info}</code>"
+            else:
+                log_message = f"<b>Чат уже находится в списке:</b>\n<code>{chat_info}</code>"
+
+            # Отправляем лог в личные сообщения
+            await self.client.send_message("me", log_message)
+        except Exception as e:
+            # Логируем ошибку в личные сообщения
+            error_message = f"<b>Ошибка при добавлении текущего чата:</b> {e}"
+            await self.client.send_message("me", error_message)
+        finally:
+            # Удаляем сообщение команды
+            await message.delete()
+    @loader.command()
     async def dchat(self, message):
-        """- добавить чат в список для рассылки (использовать только с @username или chat_id)"""
+        """- добавить чат в список для рассылки (использовать @username или chat_id)"""
         args = utils.get_args_raw(message)
         if not args or not self.is_valid_chat(args):
             await message.edit("<b>Укажите корректный @username или chat_id чата для добавления.</b>")
@@ -144,7 +172,7 @@ class banan(loader.Module):
 
     @loader.command()
     async def delchat(self, message):
-        """- удалить чат из списка для рассылки (использовать только через @username или chat_id)"""
+        """- удалить чат из списка для рассылки (через @username или chat_id)"""
         args = utils.get_args_raw(message)
         if not args:
             await message.edit("<b>Укажите @username или chat_id чата для удаления.</b>")
@@ -163,8 +191,8 @@ class banan(loader.Module):
             await message.edit(f"<b>Ошибка: {e}</b>")
 
     @loader.command()
-    async def minterval(self, message):
-        """- установить интервал рассылки (в минутах)"""
+    async def dint(self, message):
+        """- установить интервал рассылки (минуты)"""
         args = utils.get_args_raw(message)
         if not args or not args.isdigit():
             await message.edit("<b>Укажите интервал в минутах.</b>")
@@ -173,24 +201,24 @@ class banan(loader.Module):
         await message.edit(f"<b>Интервал рассылки установлен на {self.interval} минут.</b>")
 
     @loader.command()
-    async def getinterval(self, message):
-        """- показать текущий интервал рассылки"""
+    async def pint(self, message):
+        """- показать интервал рассылки"""
         await message.edit(f"<b>Текущий интервал рассылки: {self.interval} минут.</b>")
 
     @loader.command()
     async def rassil(self, message):
-        """- разослать сохраненное сообщение по указанным чатам через интервал времени"""
+        """- Начать рассылку по чатам"""
         if not self.message_to_send:
             await message.edit("<b>Нет сообщения для рассылки.</b>")
             return
         if not self.chats:
-            await message.edit("<b>Список чатов для рассылки пуст.</b>")
+            await message.edit("<b>Список чатов пуст.</b>")
             return
         if self.running:
             await message.edit("<b>Рассылка уже запущена.</b>")
             return
 
-        await message.edit(f"<b>Начинаю рассылку каждые {self.interval} минут...</b>")
+        await message.edit(f"<b>Рассылка каждые {self.interval} минут...</b>")
         self.running = True
 
         try:
@@ -218,16 +246,16 @@ class banan(loader.Module):
 
     @loader.command()
     async def stopr(self, message):
-        """- остановить рассылку сообщений"""
+        """- остановить рассылку"""
         if self.running:
             self.running = False
-            await message.edit("<b>Рассылка сообщений остановлена.</b>")
+            await message.edit("<b>Рассылка остановлена.</b>")
         else:
-            await message.edit("<b>Рассылка сообщений не активна.</b>")
+            await message.edit("<b>Рассылка не активна.</b>")
 
     @loader.command()
-    async def updatechats(self, message):
-        """- обновить названия и ссылки для чатов в списке"""
+    async def uchats(self, message):
+        """- обновить названия и теги для чатов в списке"""
         if not self.chats:
             await message.edit("<b>Список чатов для обновления пуст.</b>")
             return
