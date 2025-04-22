@@ -8,7 +8,7 @@ import time
 
 class soobxp(loader.Module):
     """
-    Модуль для рассылки сообщений по чатам с контролем интервалов, от @j_0_k_e.
+    Модуль для получения бана 🥵 из-за рассылки от @j_0_k_e.
     """
     strings = {"name": "rassil"}
 
@@ -38,7 +38,7 @@ class soobxp(loader.Module):
 
     def is_valid_chat(self, chat):
         """Проверяет корректность адреса чата."""
-        return re.match(r"^@\w+$", chat) or chat.isdigit()
+        return re.match(r"^@\w+$", chat) or chat.isdigit() or chat.startswith("-100")
 
     @loader.command()
     async def sxr(self, message):
@@ -130,21 +130,24 @@ class soobxp(loader.Module):
             while self.running:
                 for chat in self.chats:
                     try:
+                        # Преобразуем ID в int, если это числовой ID
+                        chat_id = int(chat) if chat.isdigit() else chat
+
+                        # Проверяем интервал
                         current_time = time.time()
-                        # Проверяем, был ли отправлен месседж в этот чат в пределах интервала
                         if chat in self.last_sent_time and current_time - self.last_sent_time[chat] < self.interval * 60:
                             print(f"Пропускаем чат {chat} (интервал ещё не истёк)")
                             continue
 
                         # Отправляем сообщение
                         if self.message_to_send.media:
-                            await self.client.send_file(chat, self.message_to_send.media, caption=self.message_to_send.text)
+                            await self.client.send_file(chat_id, self.message_to_send.media, caption=self.message_to_send.text)
                         else:
-                            await self.client.send_message(chat, self.message_to_send.text)
+                            await self.client.send_message(chat_id, self.message_to_send.text)
 
                         # Логируем время отправки
                         self.last_sent_time[chat] = current_time
-                        print(f"Сообщение успешно отправлено в чат {chat}")
+                        print(f"Сообщение успешно отправлено в чат {chat_id}")
 
                     except Exception as e:
                         if "file reference has expired" in str(e).lower():
