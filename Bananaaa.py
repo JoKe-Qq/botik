@@ -176,24 +176,35 @@ class banan(loader.Module):
             await message.edit(f"<b>Ошибка: {e}</b>")
 
     @loader.command()
-    async def delchat(self, message):
-        """- удалить чат из списка для рассылки (через @username или chat_id)"""
-        args = utils.get_args_raw(message)
-        if not args:
-            await message.edit("<b>Укажите @username или chat_id чата для удаления.</b>")
-            return
+async def delchat(self, message):
+    """- удалить чат из списка для рассылки (через @username или chat_id)"""
+    args = utils.get_args_raw(message)
+    if not args:
+        await message.edit("<b>Укажите @username или chat_id чата для удаления.</b>")
+        return
 
-        try:
-            chat_info = await self.resolve_chat_info(args)
-            chat_id = chat_info.split(" | ")[0]
-            if chat_id in [c.split(" | ")[0] for c in self.chats]:
-                self.chats = [c for c in self.chats if not c.startswith(chat_id)]
-                self.save_chats()
-                await message.edit(f"<b>Чат удалён из списка для рассылки:</b>\n<code>{chat_info}</code>")
-            else:
-                await message.edit(f"<b>Чат не найден в списке для рассылки:</b>\n<code>{chat_info}</code>")
-        except Exception as e:
-            await message.edit(f"<b>Ошибка: {e}</b>")
+    try:
+        # Проверяем, является ли введённое значение ID или тегом
+        if args.isdigit():
+            # Это ID
+            chat_id = args
+            chat_to_remove = next(
+                (chat for chat in self.chats if chat.startswith(chat_id)), None
+            )
+        else:
+            # Это тег
+            chat_to_remove = next(
+                (chat for chat in self.chats if f"@{args}" in chat), None
+            )
+
+        if chat_to_remove:
+            self.chats.remove(chat_to_remove)
+            self.save_chats()
+            await message.edit(f"<b>Чат удалён из списка для рассылки:</b>\n<code>{chat_to_remove}</code>")
+        else:
+            await message.edit("<b>Чат не найден в списке для рассылки.</b>")
+    except Exception as e:
+        await message.edit(f"<b>Ошибка: {e}</b>")
 
     @loader.command()
     async def dint(self, message):
