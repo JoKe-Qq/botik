@@ -50,7 +50,6 @@ class banan(loader.Module):
             raise ValueError(f"Не удалось получить информацию о чате: {e}")
 
     async def refresh_message(self):
-        async def refresh_message(self):
         """
         Пересохраняет текущее сообщение для рассылки.
         Это продлевает срок действия ссылки на медиа (если есть вложение).
