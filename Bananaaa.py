@@ -35,6 +35,20 @@ class banan(loader.Module):
         with open(self.chats_file, "w") as file:
             file.write("\n".join(self.chats))
 
+    async def resolve_chat_info(self, chat):
+        """
+        Преобразует @username или chat_id в полную информацию о чате.
+        Возвращает строку в формате: "ID | @username | Название".
+        """
+        try:
+            entity = await self.client.get_entity(chat)
+            chat_id = str(entity.id)
+            chat_username = f"@{entity.username}" if entity.username else "Unknown"
+            chat_title = entity.title if hasattr(entity, "title") and entity.title else "Unknown"
+            return f"{chat_id} | {chat_username} | {chat_title}"
+        except Exception as e:
+            raise ValueError(f"Не удалось получить информацию о чате: {e}")
+
     async def refresh_message(self):
         """
         Пересохраняет текущее сообщение для рассылки.
@@ -131,12 +145,13 @@ class banan(loader.Module):
         finally:
             # Удаляем сообщение команды
             await message.delete()
+
     @loader.command()
     async def dchat(self, message):
         """- добавить чат в список для рассылки (использовать @username или chat_id)"""
         args = utils.get_args_raw(message)
-        if not args or not self.is_valid_chat(args):
-            await message.edit("<b>Укажите корректный @username или chat_id чата для добавления.</b>")
+        if not args:
+            await message.edit("<b>Укажите @username или chat_id чата для добавления.</b>")
             return
 
         try:
@@ -255,7 +270,7 @@ class banan(loader.Module):
                 # Получаем информацию о чате (по ID или тегу)
                 entity = await self.client.get_entity(int(chat_id) if chat_id.isdigit() else chat_id)
 
-                # Извлекаем обновленную информацию
+                # Извлекаем обновлённую информацию
                 updated_chat_id = str(entity.id)
                 updated_username = f"@{entity.username}" if entity.username else "Unknown"
                 updated_title = entity.title if entity.title else "Unknown"
