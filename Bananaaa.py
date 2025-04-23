@@ -177,11 +177,11 @@ class banan(loader.Module):
 
     @loader.command()
     async def delchat(self, message):
-    """- удалить чат из списка для рассылки (через @username или chat_id)"""
-    args = utils.get_args_raw(message)
-    if not args:
-        await message.edit("<b>Укажите @username или chat_id чата для удаления.</b>")
-        return
+        """- удалить чат из списка для рассылки (через @username или chat_id)"""
+        args = utils.get_args_raw(message)
+        if not args:
+            await message.edit("<b>Укажите @username или chat_id чата для удаления.</b>")
+            return
 
     try:
         # Проверяем, является ли введённое значение ID или тегом
