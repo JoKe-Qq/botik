@@ -176,7 +176,7 @@ class banan(loader.Module):
             await message.edit(f"<b>Ошибка: {e}</b>")
 
     @loader.command()
-async def delchat(self, message):
+    async def delchat(self, message):
     """- удалить чат из списка для рассылки (через @username или chat_id)"""
     args = utils.get_args_raw(message)
     if not args:
