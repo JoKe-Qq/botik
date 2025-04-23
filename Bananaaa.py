@@ -50,13 +50,20 @@ class banan(loader.Module):
             raise ValueError(f"Не удалось получить информацию о чате: {e}")
 
     async def refresh_message(self):
+        async def refresh_message(self):
         """
         Пересохраняет текущее сообщение для рассылки.
         Это продлевает срок действия ссылки на медиа (если есть вложение).
         Уведомления отправляются отдельно в "Избранное", чтобы не перезаписывать исходное сообщение.
+        Предыдущее сохранённое сообщение удаляется.
         """
         if self.message_to_send:
             try:
+                # Удаляем предыдущее сообщение, если оно существует
+                if hasattr(self, "previous_message") and self.previous_message:
+                    await self.previous_message.delete()
+
+                # Отправляем новое сообщение для обновления медиа
                 if self.message_to_send.media:
                     updated_message = await self.client.send_file(
                         "me", self.message_to_send.media, caption=self.message_to_send.text
@@ -69,7 +76,10 @@ class banan(loader.Module):
                 # Сохраняем обновлённое сообщение для рассылки
                 self.message_to_send = updated_message
 
-                # Уведомляем отдельно, чтобы не перезаписывать сообщение
+                # Сохраняем новое сообщение как предыдущую версию
+                self.previous_message = updated_message
+
+                # Уведомляем об успешном обновлении
                 await self.client.send_message(
                     "me", "<b>Сообщение успешно обновлено для продления срока действия.</b>"
                 )
