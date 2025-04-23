@@ -45,7 +45,7 @@ class banan(loader.Module):
             chat_id = str(entity.id)
             chat_username = f"@{entity.username}" if entity.username else "Unknown"
             chat_title = entity.title if hasattr(entity, "title") and entity.title else "Unknown"
-            return f"{chat_id} | @username | {chat_title}"
+            return f"{chat_id} | {chat_username} | {chat_title}"
         except Exception as e:
             raise ValueError(f"Не удалось получить информацию о чате: {e}")
 
@@ -114,21 +114,23 @@ class banan(loader.Module):
         if len(chat_list) > max_length:
             parts = [chat_list[i:i + max_length] for i in range(0, len(chat_list), max_length)]
             for part in parts:
-                await self.client.send_message(message.chat_id, f"<b>Список чатов для рассылки:</b>\n<code>{part}</code>")
+                await self.client.send_message(
+                    message.chat_id, f"<b>Список чатов для рассылки:</b>\n<code>{part}</code>"
+                )
             await message.delete()
         else:
             await message.edit(f"<b>Список чатов для рассылки:</b>\n<code>{chat_list}</code>")
 
     @loader.command()
     async def adchat(self, message):
-        """- добавляет тот чат в котором написали эту команду в список чатов для рассылки"""
+        """- добавляет тот чат, где написали эту команду, в список чатов для рассылки"""
         try:
             chat = await message.get_chat()
             chat_id = str(chat.id)
             chat_username = f"@{chat.username}" if chat.username else "Unknown"
             chat_title = chat.title if chat.title else "Unknown"
 
-            chat_info = f"{chat_id} | @{chat_username} | {chat_title}"
+            chat_info = f"{chat_id} | {chat_username} | {chat_title}"
             log_message = ""
 
             if chat_id not in [c.split(" | ")[0] for c in self.chats]:
@@ -136,7 +138,7 @@ class banan(loader.Module):
                 self.save_chats()
                 log_message = f"<b>Успешно добавлено:</b>\n<code>{chat_info}</code>"
             else:
-                log_message = f"<b>Чат уже находится в списке:</b>\n<code>{chat_info}</code>"
+                log_message = f"<b>Чат уже в списке:</b>\n<code>{chat_info}</code>"
 
             await self.client.send_message("me", log_message)
         except Exception as e:
@@ -144,7 +146,7 @@ class banan(loader.Module):
             await self.client.send_message("me", error_message)
         finally:
             await message.delete()
-            
+
     @loader.command()
     async def dchat(self, message):
         """- добавить чат в список для рассылки (использовать @username или chat_id)"""
