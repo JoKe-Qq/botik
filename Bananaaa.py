@@ -144,11 +144,7 @@ class banan(loader.Module):
             await self.client.send_message("me", error_message)
         finally:
             await message.delete()
-
-### остальной код идёт дальше
-Продолжение полного исправленного кода:
-
-```python name=Bananaaa.py
+            
     @loader.command()
     async def dchat(self, message):
         """- добавить чат в список для рассылки (использовать @username или chat_id)"""
